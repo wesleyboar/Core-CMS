@@ -175,20 +175,20 @@ if [ "$HAS_SUPERUSER" != "True" ]; then
         echo -e "${INF}No superuser found. Letting you create one...${RST}"
         docker exec -it core_cms sh -c "python manage.py createsuperuser"
     else
+        SUPERUSER_PASSWORD="${DJANGO_SUPERUSER_PASSWORD:-admin}"
         echo -e "${INF}No superuser found. Creating default superuser...${RST}"
-        docker exec -e DJANGO_SUPERUSER_PASSWORD=admin core_cms python manage.py createsuperuser --no-input --username admin --email admin@localhost
-        SUPERUSER_CREDS_NOTE="username ${IMP}admin${RST}${POS} and password ${IMP}admin${RST}${POS}"
+        docker exec -e DJANGO_SUPERUSER_PASSWORD="$SUPERUSER_PASSWORD" core_cms python manage.py createsuperuser --no-input --username admin --email admin@localhost
+        SUPERUSER_CREDS_NOTE="username ${IMP}admin${RST}${POS} and password ${IMP}${SUPERUSER_PASSWORD}${RST}${POS}"
     fi
 else
     echo -e "${INF}Superuser already exists. Skipping creation.${RST}"
     SUPERUSER_CREDS_NOTE="your existing superuser credentials"
 fi
 
-# Build CSS on the host
+# Build CSS via Docker
 # FAQ: Dev compose mounts `.:/code` which overwrites the image's pre-built CSS
 echo -e "${INF}Building CSS...${RST}"
-npm ci
-npm run build
+docker run --rm -v "$(pwd):/code" -w /code node:18 sh -c "npm ci && npm run build"
 
 # Collect static files
 echo -e "${INF}Preparing static files...${RST}"

@@ -30,7 +30,7 @@ Use the `Makefile` instead of raw `docker compose` commands:
 make setup
 ```
 
-`make setup` (i.e. `bin/setup-cms.sh`) handles: settings file creation, Docker build, container startup, readiness polling, migrations, superuser creation, CSS build, and `collectstatic`. In a non-interactive shell it auto-creates a default superuser (`admin`/`admin`); in a TTY it prompts interactively.
+`make setup` (i.e. `bin/setup-cms.sh`) handles: settings file creation, Docker build, container startup, readiness polling, migrations, superuser creation, CSS build, and `collectstatic`. In a non-interactive shell it auto-creates a default superuser; in a TTY it prompts interactively. To set the superuser password: `DJANGO_SUPERUSER_PASSWORD=yourpass make setup`.
 
 ### Key gotchas
 
@@ -42,7 +42,7 @@ make setup
 
 - **Lint:** `docker exec core_cms flake8 taccsite_cms/ --max-line-length=120` (pre-existing warnings expected)
 - **Tests:** `docker exec core_cms python manage.py test taccsite_cms.contrib.taccsite_sample --no-input`
-- **CSS build:** `npm run build` (on host)
+- **CSS build:** `docker run --rm -v "$(pwd):/code" -w /code node:18 sh -c "npm ci && npm run build"`
 - **Collect static:** `docker exec core_cms python manage.py collectstatic --no-input`
 
 See `README.md` for full setup instructions.
