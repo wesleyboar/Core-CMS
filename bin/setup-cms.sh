@@ -174,19 +174,18 @@ HAS_SUPERUSER=$(docker exec core_cms sh -c "$HAS_SUPERUSER_CMD")
 # Check for / Create a superuser
 SUPERUSER_CREDS_NOTE="the credentials you created"
 if [ "$HAS_SUPERUSER" != "True" ]; then
-    if [ -t 0 ]; then
-        echo -e "${INF}No superuser found. Letting you create one...${RST}"
-        docker exec -it core_cms sh -c "python manage.py createsuperuser"
-    else
-        if [ -z "$DJANGO_SUPERUSER_PASSWORD" ]; then
-            echo -e "${NEG}Error: No TTY and DJANGO_SUPERUSER_PASSWORD is not set.${RST}"
-            echo "Set it before running setup, e.g.:"
-            echo "  DJANGO_SUPERUSER_PASSWORD=yourpass make setup"
-            exit 1
-        fi
+    if [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
         echo -e "${INF}No superuser found. Creating superuser...${RST}"
         docker exec -e DJANGO_SUPERUSER_PASSWORD="$DJANGO_SUPERUSER_PASSWORD" core_cms python manage.py createsuperuser --no-input --username admin --email admin@localhost
         SUPERUSER_CREDS_NOTE="username ${IMP}admin${RST}${POS} and the password you provided"
+    elif [ -t 0 ]; then
+        echo -e "${INF}No superuser found. Letting you create one...${RST}"
+        docker exec -it core_cms sh -c "python manage.py createsuperuser"
+    else
+        echo -e "${NEG}Error: No TTY and DJANGO_SUPERUSER_PASSWORD is not set.${RST}"
+        echo "Set it before running setup, e.g.:"
+        echo "  DJANGO_SUPERUSER_PASSWORD=yourpass make setup"
+        exit 1
     fi
 else
     echo -e "${INF}Superuser already exists. Skipping creation.${RST}"
