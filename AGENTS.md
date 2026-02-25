@@ -12,21 +12,54 @@ This is a **Docker-based Django CMS** project. All application code runs inside 
 | PostgreSQL 14.9 | `core_cms_postgres` | `5432` (internal) |
 | Elasticsearch 7.17 | `core_cms_elasticsearch` | `localhost:9201` |
 
-### Starting services
+### Makefile commands
+
+Use the `Makefile` instead of raw `docker compose` commands:
+
+| Command | Purpose |
+| --- | --- |
+| `make setup` | One-command full setup (see caveat below) |
+| `make build` | Build Docker images |
+| `make start` | Start containers (`ARGS="--detach"` for background) |
+| `make stop` | Stop containers |
+| `make clean` | Stop containers, remove volumes and images |
+
+### First-time setup
+
+`make setup` (i.e. `bin/setup-cms.sh`) is the canonical setup script. It handles settings file creation, Docker build, container startup, readiness polling, migrations, superuser creation, and `collectstatic`. However, it uses `docker exec -it` and an interactive `createsuperuser` prompt, so **non-interactive agents** must replicate its steps without `-it`:
 
 ```sh
-# Start all containers (detached)
-make start ARGS="--detach"
-# or: sudo docker compose -f docker-compose.dev.yml up --detach
-```
+# 1. Create settings files (script does this automatically)
+cp taccsite_cms/settings_custom.example.py taccsite_cms/settings_custom.py
+cp taccsite_cms/secrets.example.py taccsite_cms/secrets.py
+cp taccsite_cms/settings_local.example.py taccsite_cms/settings_local.py
 
-Wait for PostgreSQL (`docker exec core_cms_postgres pg_isready -U postgresadmin`) and Elasticsearch (`curl -s http://localhost:9201/_cluster/health`) before running Django management commands.
+# 2. Create postgres secret files (needed for volume mounts)
+mkdir -p conf/postgres
+echo "taccsite" > conf/postgres/pg_db.secret
+echo "postgresadmin" > conf/postgres/pg_user.secret
+echo "taccforever" > conf/postgres/pg_password.secret
+
+# 3. Build and start
+make build
+make start ARGS="--detach"
+
+# 4. Wait for services, then run Django setup (no -it flag)
+docker exec core_cms python manage.py migrate
+docker exec core_cms python manage.py shell -c \
+  "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin','admin@example.com','admin') if not User.objects.filter(is_superuser=True).exists() else None"
+docker exec core_cms python manage.py collectstatic --no-input
+
+# 5. Build CSS on the host (not covered by make setup)
+npm ci
+npm run build
+docker exec core_cms python manage.py collectstatic --no-input
+```
 
 ### Key gotchas
 
-- **CSS build must happen on the host** (not inside the CMS container). The dev compose mounts `.:/code` which overwrites the Docker image's pre-built CSS. Run `npm ci && npm run build` on the host, then `docker exec core_cms python manage.py collectstatic --no-input` to serve styles.
-- **Settings files** (`taccsite_cms/settings_custom.py`, `taccsite_cms/secrets.py`, `taccsite_cms/settings_local.py`) are gitignored. They are created from `*.example.py` files by `bin/setup-cms.sh` or manually.
-- **Postgres secrets** (`conf/postgres/pg_db.secret`, `pg_user.secret`, `pg_password.secret`) must exist for the postgres container volume mount. Values match those in `docker-compose.dev.yml`.
+- **CSS build must happen on the host.** The dev compose mounts `.:/code` which overwrites the Docker image's pre-built CSS. Run `npm ci && npm run build` on the host, then `collectstatic` again.
+- **Settings files** are gitignored. Created from `*.example.py` by `bin/setup-cms.sh` or manually.
 - The `secrets.py` Elasticsearch host should be `core_cms_elasticsearch` (the Docker hostname), not `elasticsearch`.
 - Docker commands may need `sudo` depending on the environment.
 
@@ -37,4 +70,4 @@ Wait for PostgreSQL (`docker exec core_cms_postgres pg_isready -U postgresadmin`
 - **CSS build:** `npm run build` (on host)
 - **Collect static:** `docker exec core_cms python manage.py collectstatic --no-input`
 
-See `README.md` for full setup instructions and `Makefile` for common commands.
+See `README.md` for full setup instructions.
