@@ -175,7 +175,7 @@ if [ "$HAS_SUPERUSER" != "True" ]; then
         docker exec -it core_cms sh -c "python manage.py createsuperuser"
     else
         echo -e "${INF}No superuser found. Creating default superuser (admin/admin)...${RST}"
-        docker exec core_cms sh -c "DJANGO_SUPERUSER_PASSWORD=admin python manage.py createsuperuser --no-input --username admin --email admin@localhost"
+        docker exec -e DJANGO_SUPERUSER_PASSWORD=admin core_cms python manage.py createsuperuser --no-input --username admin --email admin@localhost
     fi
 else
     echo -e "${INF}Superuser already exists. Skipping creation.${RST}"
