@@ -169,16 +169,19 @@ HAS_SUPERUSER_CMD="python manage.py shell -c \"from django.contrib.auth import g
 HAS_SUPERUSER=$(docker exec core_cms sh -c "$HAS_SUPERUSER_CMD")
 
 # Check for / Create a superuser
+SUPERUSER_NOTE="the credentials you created"
 if [ "$HAS_SUPERUSER" != "True" ]; then
     if [ -t 0 ]; then
         echo -e "${INF}No superuser found. Letting you create one...${RST}"
         docker exec -it core_cms sh -c "python manage.py createsuperuser"
     else
-        echo -e "${INF}No superuser found. Creating default superuser (admin/admin)...${RST}"
+        echo -e "${INF}No superuser found. Creating default superuser...${RST}"
         docker exec -e DJANGO_SUPERUSER_PASSWORD=admin core_cms python manage.py createsuperuser --no-input --username admin --email admin@localhost
+        SUPERUSER_NOTE="username ${IMP}admin${RST}${POS} and password ${IMP}admin${RST}${POS}"
     fi
 else
     echo -e "${INF}Superuser already exists. Skipping creation.${RST}"
+    SUPERUSER_NOTE="your existing superuser credentials"
 fi
 
 # Build CSS on the host
@@ -195,7 +198,7 @@ docker exec core_cms sh -c "python manage.py collectstatic --no-input"
 echo -e "${POS}
 ${IMP}Setup complete! You can now:${RST}${POS}
 1. Open http://localhost:8000/ in your browser.
-2. Log in with the credentials you just created.
+2. Log in with ${SUPERUSER_NOTE}.
 3. Create your first CMS page (this will be your homepage).
 
 To stop the CMS, run:
