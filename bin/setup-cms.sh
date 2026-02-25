@@ -20,6 +20,9 @@ SRC_ROOT="${SCRIPT_DIR}/.."
 VERSION="main"
 BASE_URL="https://cdn.jsdelivr.net/gh/TACC/Core-CMS@${VERSION}"
 
+# Pin Node image version (must match Dockerfile's FROM node:XX)
+NODE_IMAGE="node:18"
+
 # Functions
 download_file() {
     local url="$1"
@@ -175,10 +178,15 @@ if [ "$HAS_SUPERUSER" != "True" ]; then
         echo -e "${INF}No superuser found. Letting you create one...${RST}"
         docker exec -it core_cms sh -c "python manage.py createsuperuser"
     else
-        SUPERUSER_PASSWORD="${DJANGO_SUPERUSER_PASSWORD:-admin}"
-        echo -e "${INF}No superuser found. Creating default superuser...${RST}"
-        docker exec -e DJANGO_SUPERUSER_PASSWORD="$SUPERUSER_PASSWORD" core_cms python manage.py createsuperuser --no-input --username admin --email admin@localhost
-        SUPERUSER_CREDS_NOTE="username ${IMP}admin${RST}${POS} and password ${IMP}${SUPERUSER_PASSWORD}${RST}${POS}"
+        if [ -z "$DJANGO_SUPERUSER_PASSWORD" ]; then
+            echo -e "${NEG}Error: No TTY and DJANGO_SUPERUSER_PASSWORD is not set.${RST}"
+            echo "Set it before running setup, e.g.:"
+            echo "  DJANGO_SUPERUSER_PASSWORD=yourpass make setup"
+            exit 1
+        fi
+        echo -e "${INF}No superuser found. Creating superuser...${RST}"
+        docker exec -e DJANGO_SUPERUSER_PASSWORD="$DJANGO_SUPERUSER_PASSWORD" core_cms python manage.py createsuperuser --no-input --username admin --email admin@localhost
+        SUPERUSER_CREDS_NOTE="username ${IMP}admin${RST}${POS} and the password you provided"
     fi
 else
     echo -e "${INF}Superuser already exists. Skipping creation.${RST}"
@@ -188,7 +196,7 @@ fi
 # Build CSS via Docker
 # FAQ: Dev compose mounts `.:/code` which overwrites the image's pre-built CSS
 echo -e "${INF}Building CSS...${RST}"
-docker run --rm -v "$(pwd):/code" -w /code node:18 sh -c "npm ci && npm run build"
+docker run --rm -v "$(pwd):/code" -w /code "$NODE_IMAGE" sh -c "npm ci && npm run build"
 
 # Collect static files
 echo -e "${INF}Preparing static files...${RST}"

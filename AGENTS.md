@@ -27,10 +27,10 @@ Use the `Makefile` instead of raw `docker compose` commands:
 ### First-time setup
 
 ```sh
-make setup
+DJANGO_SUPERUSER_PASSWORD=yourpass make setup
 ```
 
-`make setup` (i.e. `bin/setup-cms.sh`) handles: settings file creation, Docker build, container startup, readiness polling, migrations, superuser creation, CSS build, and `collectstatic`. In a non-interactive shell it auto-creates a default superuser; in a TTY it prompts interactively. To set the superuser password: `DJANGO_SUPERUSER_PASSWORD=yourpass make setup`.
+`make setup` (i.e. `bin/setup-cms.sh`) handles: settings file creation, Docker build, container startup, readiness polling, migrations, superuser creation, CSS build, and `collectstatic`. Non-interactive shells must set `DJANGO_SUPERUSER_PASSWORD`; a TTY prompts interactively.
 
 ### Key gotchas
 
