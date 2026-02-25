@@ -159,7 +159,7 @@ done
 
 # Run Django setup commands
 echo -e "${INF}Setting up Django...${RST}"
-docker exec -it core_cms sh -c "python manage.py migrate"
+docker exec core_cms sh -c "python manage.py migrate"
 
 # Check whether to let user create superuser
 echo -e "${INF}Checking for existing superuser...${RST}"
@@ -170,15 +170,26 @@ HAS_SUPERUSER=$(docker exec core_cms sh -c "$HAS_SUPERUSER_CMD")
 
 # Check for / Create a superuser
 if [ "$HAS_SUPERUSER" != "True" ]; then
-    echo -e "${INF}No superuser found. Letting you create one...${RST}"
-    docker exec -it core_cms sh -c "python manage.py createsuperuser"
+    if [ -t 0 ]; then
+        echo -e "${INF}No superuser found. Letting you create one...${RST}"
+        docker exec -it core_cms sh -c "python manage.py createsuperuser"
+    else
+        echo -e "${INF}No superuser found. Creating default superuser (admin/admin)...${RST}"
+        docker exec core_cms sh -c "DJANGO_SUPERUSER_PASSWORD=admin python manage.py createsuperuser --no-input --username admin --email admin@localhost"
+    fi
 else
     echo -e "${INF}Superuser already exists. Skipping creation.${RST}"
 fi
 
+# Build CSS on the host
+# FAQ: Dev compose mounts `.:/code` which overwrites the image's pre-built CSS
+echo -e "${INF}Building CSS...${RST}"
+npm ci
+npm run build
+
 # Collect static files
 echo -e "${INF}Preparing static files...${RST}"
-docker exec -it core_cms sh -c "python manage.py collectstatic --no-input"
+docker exec core_cms sh -c "python manage.py collectstatic --no-input"
 
 # Announce end
 echo -e "${POS}

@@ -26,39 +26,21 @@ Use the `Makefile` instead of raw `docker compose` commands:
 
 ### First-time setup
 
-`make setup` (i.e. `bin/setup-cms.sh`) is the canonical setup script. It handles settings file creation, Docker build, container startup, readiness polling, migrations, superuser creation, and `collectstatic`. However, it uses `docker exec -it` and an interactive `createsuperuser` prompt, so **non-interactive agents** must replicate its steps without `-it`:
-
 ```sh
-# 1. Create settings files (script does this automatically)
-cp taccsite_cms/settings_custom.example.py taccsite_cms/settings_custom.py
-cp taccsite_cms/secrets.example.py taccsite_cms/secrets.py
-cp taccsite_cms/settings_local.example.py taccsite_cms/settings_local.py
-
-# 2. Create postgres secret files (needed for volume mounts)
+# 1. Create postgres secret files (needed for volume mounts, not created by make setup)
 mkdir -p conf/postgres
 echo "taccsite" > conf/postgres/pg_db.secret
 echo "postgresadmin" > conf/postgres/pg_user.secret
 echo "taccforever" > conf/postgres/pg_password.secret
 
-# 3. Build and start
-make build
-make start ARGS="--detach"
-
-# 4. Wait for services, then run Django setup (no -it flag)
-docker exec core_cms python manage.py migrate
-docker exec core_cms python manage.py shell -c \
-  "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin','admin@example.com','admin') if not User.objects.filter(is_superuser=True).exists() else None"
-docker exec core_cms python manage.py collectstatic --no-input
-
-# 5. Build CSS on the host (not covered by make setup)
-npm ci
-npm run build
-docker exec core_cms python manage.py collectstatic --no-input
+# 2. Run the setup script (handles everything else)
+make setup
 ```
+
+`make setup` (i.e. `bin/setup-cms.sh`) handles: settings file creation, Docker build, container startup, readiness polling, migrations, superuser creation, CSS build, and `collectstatic`. In a non-interactive shell it auto-creates a default superuser (`admin`/`admin`); in a TTY it prompts interactively.
 
 ### Key gotchas
 
-- **CSS build must happen on the host.** The dev compose mounts `.:/code` which overwrites the Docker image's pre-built CSS. Run `npm ci && npm run build` on the host, then `collectstatic` again.
 - **Settings files** are gitignored. Created from `*.example.py` by `bin/setup-cms.sh` or manually.
 - The `secrets.py` Elasticsearch host should be `core_cms_elasticsearch` (the Docker hostname), not `elasticsearch`.
 - Docker commands may need `sudo` depending on the environment.
