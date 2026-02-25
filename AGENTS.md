@@ -27,13 +27,6 @@ Use the `Makefile` instead of raw `docker compose` commands:
 ### First-time setup
 
 ```sh
-# 1. Create postgres secret files (needed for volume mounts, not created by make setup)
-mkdir -p conf/postgres
-echo "taccsite" > conf/postgres/pg_db.secret
-echo "postgresadmin" > conf/postgres/pg_user.secret
-echo "taccforever" > conf/postgres/pg_password.secret
-
-# 2. Run the setup script (handles everything else)
 make setup
 ```
 
