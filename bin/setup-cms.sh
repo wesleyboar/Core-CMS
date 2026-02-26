@@ -193,7 +193,8 @@ else
 fi
 
 # Build CSS via Docker
-# FAQ: Dev compose mounts `.:/code` which overwrites the image's pre-built CSS
+# FAQ: Dev compose mounts host `.` onto `/code`, so the image's pre-built CSS is
+#      not available; this step rebuilds it on the host via a Node container
 echo -e "${INF}Building CSS...${RST}"
 docker run --rm -v "$(pwd):/code" -w /code "$NODE_IMAGE" sh -c "npm ci && npm run build"
 
