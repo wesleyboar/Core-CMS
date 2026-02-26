@@ -193,8 +193,8 @@ else
 fi
 
 # Build CSS via Docker
-# FAQ: Dev compose mounts host `.` onto `/code`, so the image's pre-built CSS is
-#      not available; this step rebuilds it on the host via a Node container
+# FAQ: To rebuild CSS via ad-hoc Node container, because
+#      `docker-compose.dev.yml` mounts `.:/code` which erases pre-built CSS   
 echo -e "${INF}Building CSS...${RST}"
 docker run --rm -v "$(pwd):/code" -w /code "$NODE_IMAGE" sh -c "npm ci && npm run build"
 
