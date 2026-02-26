@@ -13,8 +13,7 @@ IMP='\033[1m'    # important
 
 # Define paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="${SCRIPT_DIR}/../"
-SRC_ROOT="${SCRIPT_DIR}/.."
+PROJECT_ROOT="${SCRIPT_DIR}/.."
 
 # Configure fallback for settings
 VERSION="main"
@@ -49,7 +48,7 @@ download_file() {
 }
 
 # Prepare for Django operations
-cd "$SRC_ROOT"
+cd "$PROJECT_ROOT"
 
 # Announce start
 echo -e "${POS}Setting up TACC Core CMS...${RST}"
@@ -69,9 +68,7 @@ fi
 # Check if containers are already running
 if docker ps | grep -q "core_cms"; then
     echo -e "${WRN}Containers are already running. Stopping them first...${RST}"
-    cd "$PROJECT_ROOT"
     make stop
-    cd "$SRC_ROOT"
 fi
 
 # Check for required settings files (local first, then remote)
@@ -88,7 +85,7 @@ for file in settings_custom settings_local secrets; do
             cp "$example_file" "$settings_file"
         else
             echo -e "  ${WRN}Local ${example_file} not found, downloading directly to ${settings_file}...${RST}"
-            if ! download_file "$url" "${SRC_ROOT}/$settings_file" "${file}.py"; then
+            if ! download_file "$url" "${PROJECT_ROOT}/$settings_file" "${file}.py"; then
                 FAILED_DOWNLOADS+=("${file}|${url}|${settings_file}")
             fi
         fi
@@ -104,7 +101,7 @@ if [ ${#FAILED_DOWNLOADS[@]} -gt 0 ]; then
         IFS='|' read -r file url settings_file <<< "$failure"
         echo -e "  ${NEG}✗ ${file}.py${RST}"
         echo -e "    ${INF}URL: ${url}${RST}"
-        echo -e "    ${INF}Save to: ${SRC_ROOT}/${settings_file}${RST}"
+        echo -e "    ${INF}Save to: ${PROJECT_ROOT}/${settings_file}${RST}"
     done
     echo -e ""
     echo -e "${WRN}Resolution:${RST}"
@@ -117,7 +114,6 @@ fi
 
 # Build and start Docker containers (from project root)
 echo -e "${INF}Building and starting Docker containers...${RST}"
-cd "$PROJECT_ROOT"
 make build
 make start ARGS=--detach
 
@@ -196,7 +192,7 @@ fi
 # FAQ: To rebuild CSS via ad-hoc Node container, because
 #      `docker-compose.dev.yml` mounts `.:/code` which erases pre-built CSS   
 echo -e "${INF}Building CSS...${RST}"
-docker run --rm -v "$(pwd):/code" -w /code "$NODE_IMAGE" sh -c "npm ci && npm run build"
+docker run --rm -v "$PROJECT_ROOT:/code" -w /code "$NODE_IMAGE" sh -c "npm ci && npm run build"
 
 # Collect static files
 echo -e "${INF}Preparing static files...${RST}"
